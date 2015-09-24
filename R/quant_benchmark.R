@@ -131,7 +131,7 @@ filtered_summary <- function(mres, filter_exp) {
           inner_join(data.table(filtered_ids), by = c("target_id"))
       }
 
-      res %>%
+       as.data.frame(res) %>%
         group_by(method) %>%
         summarise(
           pearson = cor(estimate, oracle, method = "pearson"),
@@ -365,7 +365,7 @@ read_oracle <- function(fname, targ_to_eff_len) {
 
 #' @export
 read_cufflinks <- function(fname, mean_frag_len) {
-  data <- data.table::fread(fname, header = TRUE)
+  data <- data.table::fread(fname, header = TRUE, data.table = FALSE)
 
   data <- data %>%
     mutate(tpm = FPKM * 1e6/ sum(FPKM),
