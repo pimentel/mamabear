@@ -110,8 +110,12 @@ filtered_no_summary <- function(mres, filter_exp) {
   setNames(both_res, c("tpm", "est_counts"))
 }
 
+remove_perfect <- function(x, delta = .Machine$double.eps ^ 2) {
+  x[abs(x) >= delta]
+}
+
 #' @export
-filtered_summary <- function(mres, filter_exp) {
+filtered_summary <- function(mres, filter_exp, ignore_perfect = TRUE, normalize = TRUE) {
   stopifnot( is(mres, "merged_res") )
   do_filter <- if (missing(filter_exp)) {
     FALSE
@@ -127,43 +131,96 @@ filtered_summary <- function(mres, filter_exp) {
     function(res)
     {
       if (do_filter) {
+        message('filtering')
         res <- data.table(res) %>%
           inner_join(data.table(filtered_ids), by = c("target_id"))
       }
-
-      res %>%
-        group_by(method) %>%
-        summarise(
+      
+      # this will not work correctly for tpm
+#      if (normalize) {
+#        res <- mutate(group_by(as.data.frame(res), method), oracle = oracle / sum(oracle))
+#         res %>% 
+#           group_by(method) %>% 
+#           summarize(sum(oracle)) %>% 
+#           print
+#         print(head(res$oracle))
+#      }
+      
+      metrics <- as.data.frame(res) %>% 
+        group_by(method) %>% 
+        mutate(diff = relative_difference(estimate, oracle, na_zeroes = FALSE,
+          normalize_counts = TRUE))
+      
+      perfect <- metrics %>% 
+        group_by(target_id) %>% 
+        summarize(y = all(abs(diff) <= .Machine$double.eps^2)) %>% 
+        filter(y)
+      message('removing: ', nrow(perfect))
+      
+      metrics <- anti_join(metrics, perfect, by = 'target_id')
+      
+      result <- as.data.frame(metrics) %>% 
+        group_by(method) %>% 
+        summarize(
+          mrd = median(abs(diff)),
           pearson = cor(estimate, oracle, method = "pearson"),
-          spearman = cor(estimate, oracle, method = "spearman"),
-          med_rel_diff_no_zeroes = median(abs(relative_difference(estimate, oracle)),
-              na.rm = TRUE),
-          med_rel_diff = median(abs(relative_difference(estimate, oracle, FALSE))),
-          med_per_err = median(abs(percent_error(estimate, oracle)))
+          spearman = cor(estimate, oracle, method = "spearman")
           )
+        
+      
+#        as.data.frame(res) %>%
+#         group_by(method) %>%
+#         summarise(
+#           pearson = cor(estimate, oracle, method = "pearson"),
+#           spearman = cor(estimate, oracle, method = "spearman"),
+#           med_rel_diff_no_zeroes = median(
+#             abs(
+#               ifelse(ignore_perfect,
+#                 remove_perfect(relative_difference(estimate, oracle, normalize_counts = normalize)),
+#                 relative_difference(estimate, oracle, normalize_counts = normalize))),
+#             na.rm = TRUE),
+#           med_rel_diff = median(
+#             abs(
+#               ifelse(ignore_perfect,
+#                 remove_perfect(relative_difference(estimate, oracle, FALSE, normalize_counts = normalize)),
+#                 relative_difference(estimate, oracle, FALSE, normalize_counts = normalize))),
+#             na.rm = TRUE),
+#           median_relative_difference = median(abs(relative_difference(estimate, oracle, na_zeroes = FALSE, normalize_counts = TRUE))),
+#           med_per_err = median(abs(percent_error(estimate, oracle)))
+#           )
+      
+      result
     })
 
   setNames(both_res, c("tpm", "est_counts"))
 }
 
-relative_difference <- function(x, y, na_zeroes = TRUE) {
+#' @export
+relative_difference <- function(x, y, na_zeroes = TRUE, normalize_counts = TRUE) {
   stopifnot(length(x) == length(y))
-
   result <- rep(NA_real_, length(x))
 
   non_zero <- which( x > 0 | y > 0 )
   both_zero <- setdiff(seq_along(x), non_zero)
+  #both_zero <- which( x <= .Machine$double.eps & y <= .Machine$double.eps)
+  #non_zero <- setdiff(seq_along(x), both_zero)
 
   if (!na_zeroes) {
     result[both_zero] <- 0.0
   }
 
+  if (normalize_counts) {
+    x <- x / sum(x, na.rm = TRUE)
+    y <- y / sum(y, na.rm = TRUE)
+  }
+  
   result[non_zero] <- 2 * ((x[non_zero] - y[non_zero]) /
     abs(x[non_zero] + y[non_zero]))
 
   result
 }
 
+#' @export
 percent_error <- function(estimate, truth) {
   (estimate - truth) / truth
 }
@@ -366,14 +423,15 @@ read_oracle <- function(fname, targ_to_eff_len) {
 
 #' @export
 read_cufflinks <- function(fname, mean_frag_len) {
-  data <- data.table::fread(fname, header = TRUE)
+  #data <- data.table::fread(fname, header = TRUE, data.table = FALSE)
+  data <- read.table(fname, header = TRUE, stringsAsFactors = FALSE)
 
   data <- data %>%
-    mutate(tpm = FPKM * 1e6/ sum(FPKM),
-      est_counts = tpm_to_alpha(tpm, length - mean_frag_len))
+    mutate(tpm = FPKM * 1e6/ sum(FPKM))
+      #est_counts = tpm_to_alpha(tpm, length - mean_frag_len))
 
   data %>%
-    select(target_id = tracking_id, tpm, est_counts)
+    select(target_id = tracking_id, tpm)
 }
 
 
