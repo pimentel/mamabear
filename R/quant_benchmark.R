@@ -17,7 +17,7 @@ merge_results <- function(exp_list, exp_labels, oracle) {
     function(i)
     {
       res <- exp_list[[i]] %>%
-        select(target_id, tpm, est_counts) %>%
+        dplyr::select(target_id, tpm, est_counts) %>%
         data.table::data.table()
       data.table::setnames(res, "tpm", paste0("tpm_", exp_labels[i]))
       data.table::setnames(res, "est_counts", paste0("est_counts_", exp_labels[i]))
@@ -31,10 +31,10 @@ merge_results <- function(exp_list, exp_labels, oracle) {
 
   melt_by <- function(data, unit_by) {
     m_unit <- data %>%
-      select(target_id, starts_with(unit_by)) %>%
+      dplyr::select(target_id, starts_with(unit_by)) %>%
       reshape2::melt(id.vars = "target_id", variable.name = "method")
     ret <- data.table::data.table(oracle) %>%
-      select(target_id, starts_with(unit_by)) %>%
+      dplyr::select(target_id, starts_with(unit_by)) %>%
       inner_join(data.table::data.table(m_unit), by = "target_id") %>%
       rename(estimate = value)
     data.table::setnames(ret, paste0(unit_by, "_oracle"), "oracle")
@@ -123,7 +123,7 @@ filtered_summary <- function(mres, filter_exp, ignore_perfect = TRUE, normalize 
     filter_exp <- deparse(substitute(filter_exp))
     filtered_ids <- mres$all_data %>%
       filter_(.dots = list(filter_exp)) %>%
-      select(target_id)
+      dplyr::select(target_id)
     TRUE
   }
 
@@ -136,17 +136,9 @@ filtered_summary <- function(mres, filter_exp, ignore_perfect = TRUE, normalize 
           inner_join(data.table(filtered_ids), by = c("target_id"))
       }
       
-      # this will not work correctly for tpm
-#      if (normalize) {
-#        res <- mutate(group_by(as.data.frame(res), method), oracle = oracle / sum(oracle))
-#         res %>% 
-#           group_by(method) %>% 
-#           summarize(sum(oracle)) %>% 
-#           print
-#         print(head(res$oracle))
-#      }
-      
       metrics <- as.data.frame(res) %>% 
+      #print(class(res))
+      #metrics <- res %>%
         group_by(method) %>% 
         mutate(diff = relative_difference(estimate, oracle, na_zeroes = FALSE,
           normalize_counts = TRUE))
