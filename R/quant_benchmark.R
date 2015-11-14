@@ -366,7 +366,8 @@ read_salmon <- function(fname) {
   # TODO: fix salmon TPM
     salmon <- fread(fname, header = FALSE, skip = 13, stringsAsFactors = FALSE,
         data.table = FALSE)
-    colnames(salmon) <- c("target_id", "length", "tpm", "fpkm", "est_counts")
+    colnames(salmon) <- c("target_id", "length", "tpm", "est_counts")
+    # colnames(salmon) <- c("target_id", "length", "tpm", "fpkm", "est_counts")
     # salmon %>%
     #     rename(tpm_salmon = tpm, counts_salmon = est_counts) %>%
     #     arrange(target_id)
@@ -458,9 +459,6 @@ alpha_to_oracle_cor <- function(alpha, oracle_counts) {
   unlist(all_spearman)
 }
 
-#' Simulate counts table
-#'
-#' Simulate a counts table, given TPM and effective length
-#'
-#' @param mixture a data.frame containing columns "tpm", "target_id" and "eff_len"
-#' @param total_counts the total number of reads
+other_comparison <- function(quant, truth) {
+  dplyr::inner_join(quant, truth, by = 'target_id')
+}

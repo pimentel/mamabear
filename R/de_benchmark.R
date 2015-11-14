@@ -77,7 +77,8 @@ fdr_nde_plot <- function(de_bench, estimate = TRUE) {
   stopifnot( is(de_bench, "de_benchmark") )
 
   n_true_de <- sum(de_bench$all_data$is_de)
-  print(n_true_de)
+  message('Intersection of targets: ', nrow(de_bench$all_data))
+  message('Number of truly DE: ', n_true_de)
 
   pvals <- mutate(de_bench$m_pval, method = sub("pval_", "", method))
   qvals <- select(de_bench$m_qval, target_id, method, estimate)
