@@ -12,8 +12,7 @@ new_de_benchmark <- function(de_list, de_labels, oracle) {
 
   # extract relevant columns and rename
   de_list <- lapply(seq_along(de_list),
-    function(i)
-    {
+    function(i) {
       res <- de_list[[i]] %>%
         select(target_id, pval, qval) %>%
         data.table::data.table()
@@ -36,7 +35,7 @@ new_de_benchmark <- function(de_list, de_labels, oracle) {
       reshape2::melt(id.vars = "target_id", variable.name = "method")
     ret <- data.table::data.table(oracle) %>%
       inner_join(data.table::data.table(m_unit), by = "target_id") %>%
-      rename(estimate = value)
+      dplyr::rename(estimate = value)
     # data.table::setnames(ret, paste0(unit_by, "_oracle"), "oracle")
     ret
   }
@@ -83,7 +82,7 @@ fdr_nde_plot <- function(de_bench, estimate = TRUE) {
   pvals <- mutate(de_bench$m_pval, method = sub("pval_", "", method))
   qvals <- select(de_bench$m_qval, target_id, method, estimate)
   qvals <- mutate(qvals, method = sub("qval_", "", method))
-  qvals <- rename(qvals, qval = estimate)
+  qvals <- dplyr::rename(qvals, qval = estimate)
 
   pvals <- inner_join(pvals, qvals, by = c("target_id", "method"))
 
