@@ -14,7 +14,7 @@ new_de_benchmark <- function(de_list, de_labels, oracle) {
   de_list <- lapply(seq_along(de_list),
     function(i) {
       res <- de_list[[i]] %>%
-        select(target_id, pval, qval) %>%
+        dplyr::select(target_id, pval, qval) %>%
         data.table::data.table()
 
       c('pval', 'qval') %>%
@@ -27,14 +27,14 @@ new_de_benchmark <- function(de_list, de_labels, oracle) {
     de_list)
 
   oracle <- oracle %>%
-    select(target_id, is_de, log_fc)
+    dplyr::select(target_id, is_de, log_fc)
 
   melt_by <- function(data, unit_by) {
     m_unit <- data %>%
-      select(target_id, starts_with(unit_by)) %>%
+      dplyr::select(target_id, starts_with(unit_by)) %>%
       reshape2::melt(id.vars = "target_id", variable.name = "method")
     ret <- data.table::data.table(oracle) %>%
-      inner_join(data.table::data.table(m_unit), by = "target_id") %>%
+      dplyr::inner_join(data.table::data.table(m_unit), by = "target_id") %>%
       dplyr::rename(estimate = value)
     # data.table::setnames(ret, paste0(unit_by, "_oracle"), "oracle")
     ret
@@ -79,18 +79,18 @@ fdr_nde_plot <- function(de_bench, estimate = TRUE) {
   message('Intersection of targets: ', nrow(de_bench$all_data))
   message('Number of truly DE: ', n_true_de)
 
-  pvals <- mutate(de_bench$m_pval, method = sub("pval_", "", method))
-  qvals <- select(de_bench$m_qval, target_id, method, estimate)
-  qvals <- mutate(qvals, method = sub("qval_", "", method))
+  pvals <- dplyr::mutate(de_bench$m_pval, method = sub("pval_", "", method))
+  qvals <- dplyr::select(de_bench$m_qval, target_id, method, estimate)
+  qvals <- dplyr::mutate(qvals, method = sub("qval_", "", method))
   qvals <- dplyr::rename(qvals, qval = estimate)
 
   pvals <- inner_join(pvals, qvals, by = c("target_id", "method"))
 
   plt <- pvals %>%
-    mutate(method = sub("pval_", "", method)) %>%
+    dplyr::mutate(method = sub("pval_", "", method)) %>%
     group_by(method) %>%
     arrange(estimate) %>%
-    mutate(nde = 1:n(), tFDR = cummean(!is_de)) %>%
+    dplyr::mutate(nde = 1:n(), tFDR = cummean(!is_de)) %>%
     ggplot(aes(nde, estimate, group = method))
   if (estimate) {
     plt <- plt + geom_line(aes(nde, qval, colour = method), linetype = 3)
