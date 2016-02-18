@@ -100,6 +100,12 @@ calculate_fdr <- function(de_bench) {
   list(n_true_de = n_true_de, pvals = pvals)
 }
 
+#' FDR versus estimated FDR
+#'
+#' Plot the true fdr versus the estimated fdr
+#'
+#' @param de_bench a \code{de_benchmark} object resulting from \code{merge_results}
+#' @return a \code{ggplot} object
 #' @export
 fdr_efdr_plot <- function(de_bench) {
   stopifnot( is(de_bench, "de_benchmark") )
@@ -115,6 +121,13 @@ fdr_efdr_plot <- function(de_bench) {
   p
 }
 
+#' FDR versus ranked list
+#'
+#' Plot the true FDR versus the ranking induced by p-value
+#'
+#' @param de_bench a \code{de_benchmark} object resulting from \code{merge_results}
+#' @param estimate if \code{TRUE}, then plot the estimated FDR with dotted lines
+#' @return a \code{ggplot} object
 #' @export
 fdr_nde_plot <- function(de_bench, estimate = TRUE) {
   stopifnot( is(de_bench, "de_benchmark") )
