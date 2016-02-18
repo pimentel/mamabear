@@ -97,14 +97,15 @@ calculate_fdr <- function(de_bench) {
   pvals <- dplyr::arrange(pvals, estimate)
   pvals <- dplyr::mutate(pvals, nde = 1:n(), tFDR = cummean(!is_de))
 
-  pvals
+  list(n_true_de = n_true_de, pvals = pvals)
 }
 
 #' @export
 fdr_efdr_plot <- function(de_bench) {
   stopifnot( is(de_bench, "de_benchmark") )
 
-  pvals <- calculate_fdr(de_bench)
+  fdr_obj <- calculate_fdr(de_bench)
+  pvals <- fdr_obj$pvals
 
   p <- ggplot(pvals, aes(qvals, tFDR))
   p <- p + geom_line(aes(color = method, linetype = method))
@@ -135,7 +136,9 @@ fdr_nde_plot <- function(de_bench, estimate = TRUE) {
   #   arrange(estimate) %>%
   #   dplyr::mutate(nde = 1:n(), tFDR = cummean(!is_de)) %>%
   #   ggplot(aes(nde, estimate, group = method))
-  pvals <- calculate_fdr(de_bench)
+  fdr_obj <- calculate_fdr(de_bench)
+  pvals <- fdr_obj$pvals
+
   plt <- ggplot(pvals, aes(nde, estimate, group = method))
 
   if (estimate) {
@@ -145,7 +148,7 @@ fdr_nde_plot <- function(de_bench, estimate = TRUE) {
   plt <- plt +
     geom_line(aes(nde, tFDR, colour = method, linetype = method),
       size = 0.8, alpha = 0.8) +
-    geom_vline(xintercept = n_true_de, linetype = 3) +
+    geom_vline(xintercept = fdr_obj$n_true_de, linetype = 3) +
     geom_hline(yintercept = 0.10, linetype = 3) +
     #theme_bw() +
     xlab("Number of features called DE") +
