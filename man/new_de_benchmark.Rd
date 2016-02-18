@@ -4,12 +4,14 @@
 \alias{new_de_benchmark}
 \title{Merge results from differential expression tools}
 \usage{
-new_de_benchmark(de_list, de_labels, oracle)
+new_de_benchmark(de_list, de_labels, oracle, de_colors = NULL)
 }
 \arguments{
 \item{de_list}{a list of de results}
 
 \item{oracle}{a data.frame with the columns target_id, is_de and other optional columns (TBD)}
+
+\item{de_colors}{a named list of what colors to assign to what tool. The name corresponds to the method. If not named, will assign in alphabetical order.}
 
 \item{de_label}{a character vector of the same length as de_list with labels for each method}
 }

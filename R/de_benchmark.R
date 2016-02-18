@@ -5,10 +5,40 @@
 #' @param de_list a list of de results
 #' @param de_label a character vector of the same length as de_list with labels for each method
 #' @param oracle a data.frame with the columns target_id, is_de and other optional columns (TBD)
+#' @param de_colors a named list of what colors to assign to what tool. The name corresponds to the method. If not named, will assign in alphabetical order.
 #' @export
-new_de_benchmark <- function(de_list, de_labels, oracle) {
+new_de_benchmark <- function(de_list, de_labels, oracle, de_colors = NULL) {
   stopifnot( is(de_list, "list") )
   stopifnot( length(de_list) == length(de_labels) )
+  stopifnot( is(de_labels, "character") )
+
+  if (!is.null(de_colors)) {
+    # user supplied colors
+    stopifnot( length(de_list) == length(de_colors) )
+    if (!is.null(names(de_colors))) {
+      # ensure that the user supplied names match the actual names
+      stopifnot(sort(names(de_colors)) == sort(de_labels))
+    } else {
+      names(de_colors) <- sort(de_labels)
+    }
+  } else {
+    # since the user didn't supply any colors, give them some colorblind ones
+
+    # thank you: http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
+    colorblind_colors <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442",
+      "#0072B2", "#D55E00", "#CC79A7")
+
+    # if we don't have enough colorblind colors, add some random ones
+    if (length(de_list) > length(colorblind_colors)) {
+      set.seed(1)
+      remaining_colors <- sample(colors(),
+        length(de_list) - length(colorblind_colors))
+      colorblind_colors <- c(colorblind_colors, remaining_colors)
+    }
+
+    de_colors <- colorblind_colors[1:length(de_labels)]
+    names(de_colors) <- sort(de_labels)
+  }
 
   # extract relevant columns and rename
   de_list <- lapply(seq_along(de_list),
@@ -49,7 +79,9 @@ new_de_benchmark <- function(de_list, de_labels, oracle) {
     all_data = as_df(all_res),
     m_pval = as_df(m_pval),
     m_qval = as_df(m_qval),
-    labels = de_labels)
+    labels = de_labels,
+    color_mapping = color_mapping
+    )
   class(ret) <- "de_benchmark"
   ret
 }
@@ -66,16 +98,21 @@ new_de_benchmark <- function(de_list, de_labels, oracle) {
 fdr_tpr_plot <- function(de_bench) {
   stopifnot( is(de_bench, "de_benchmark") )
 
-  de_bench$m_qval %>%
-    group_by(method) %>%
-    arrange(estimate) %>%
-    mutate(tpr = cummean(is_de)) %>%
-    ggplot(aes(estimate, tpr, group = method)) +
-      geom_line(aes(colour = method)) +
-      xlab("eFDR") +
-      ylab("TPR") +
-      xlim(0, 1) +
-      ylim(0, 1)
+  tmp <- dplyr::mutate(de_bench$m_qval, method = sub("qval_", "", method))
+
+  tmp <- dplyr::group_by(tmp, method)
+  tmp <- dplyr::arrange(tmp, estimate)
+  tmp <- dplyr::mutate(tmp, tpr = cummean(is_de))
+
+  p <- ggplot(tmp, aes(estimate, tpr, group = method))
+  p <- p + geom_line(aes(colour = method))
+  p <- p + xlab("eFDR")
+  p <- p + ylab("TPR")
+  p <- p + xlim(0, 1)
+  p <- p + ylim(0, 1)
+  p <- p + scale_color_manual(values = de_bench$color_mapping)
+
+
 }
 
 calculate_fdr <- function(de_bench) {
@@ -86,6 +123,7 @@ calculate_fdr <- function(de_bench) {
   message('Number of truly DE: ', n_true_de)
 
   pvals <- dplyr::mutate(de_bench$m_pval, method = sub("pval_", "", method))
+
   qvals <- dplyr::select(de_bench$m_qval, target_id, method, estimate)
   qvals <- dplyr::mutate(qvals, method = sub("qval_", "", method))
   qvals <- dplyr::rename(qvals, qval = estimate)
@@ -117,6 +155,7 @@ fdr_efdr_plot <- function(de_bench) {
   p <- p + geom_line(aes(color = method, linetype = method))
   p <- p + xlab("eFDR")
   p <- p + ylab("FDR")
+  p <- p + scale_color_manual(values = de_bench$color_mapping)
 
   p
 }
@@ -132,23 +171,6 @@ fdr_efdr_plot <- function(de_bench) {
 fdr_nde_plot <- function(de_bench, estimate = TRUE) {
   stopifnot( is(de_bench, "de_benchmark") )
 
-  # n_true_de <- sum(de_bench$all_data$is_de)
-  # message('Intersection of targets: ', nrow(de_bench$all_data))
-  # message('Number of truly DE: ', n_true_de)
-  #
-  # pvals <- dplyr::mutate(de_bench$m_pval, method = sub("pval_", "", method))
-  # qvals <- dplyr::select(de_bench$m_qval, target_id, method, estimate)
-  # qvals <- dplyr::mutate(qvals, method = sub("qval_", "", method))
-  # qvals <- dplyr::rename(qvals, qval = estimate)
-  #
-  # pvals <- inner_join(pvals, qvals, by = c("target_id", "method"))
-
-  # plt <- pvals %>%
-  #   dplyr::mutate(method = sub("pval_", "", method)) %>%
-  #   group_by(method) %>%
-  #   arrange(estimate) %>%
-  #   dplyr::mutate(nde = 1:n(), tFDR = cummean(!is_de)) %>%
-  #   ggplot(aes(nde, estimate, group = method))
   fdr_obj <- calculate_fdr(de_bench)
   pvals <- fdr_obj$pvals
 
@@ -167,6 +189,7 @@ fdr_nde_plot <- function(de_bench, estimate = TRUE) {
     xlab("Number of features called DE") +
     ylab("FDR") +
     ylim(0, 1)
+  plt <- plt + scale_color_manual(values = de_bench$color_mapping)
 
   plt
 }
