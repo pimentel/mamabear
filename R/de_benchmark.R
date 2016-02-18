@@ -107,7 +107,7 @@ fdr_efdr_plot <- function(de_bench) {
   fdr_obj <- calculate_fdr(de_bench)
   pvals <- fdr_obj$pvals
 
-  p <- ggplot(pvals, aes(qvals, tFDR))
+  p <- ggplot(pvals, aes(qval, tFDR))
   p <- p + geom_line(aes(color = method, linetype = method))
   p <- p + xlab("eFDR")
   p <- p + ylab("FDR")
