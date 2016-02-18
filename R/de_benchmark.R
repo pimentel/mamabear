@@ -80,7 +80,7 @@ new_de_benchmark <- function(de_list, de_labels, oracle, de_colors = NULL) {
     m_pval = as_df(m_pval),
     m_qval = as_df(m_qval),
     labels = de_labels,
-    color_mapping = color_mapping
+    color_mapping = de_colors
     )
   class(ret) <- "de_benchmark"
   ret
