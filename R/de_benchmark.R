@@ -5,7 +5,7 @@
 #' @param de_list a list of de results
 #' @param de_label a character vector of the same length as de_list with labels for each method
 #' @param oracle a data.frame with the columns target_id, is_de and other optional columns (TBD)
-#' @param de_colors a named list of what colors to assign to what tool. The name corresponds to the method. If not named, will assign in alphabetical order.
+#' @param de_colors a named list of what colors to assign to what tool. The name corresponds to the method. If not named, will assign in alphabetical order. If \code{NULL}, colors will be chosen automatically.
 #' @export
 new_de_benchmark <- function(de_list, de_labels, oracle, de_colors = NULL) {
   stopifnot( is(de_list, "list") )
@@ -25,8 +25,8 @@ new_de_benchmark <- function(de_list, de_labels, oracle, de_colors = NULL) {
     # since the user didn't supply any colors, give them some colorblind ones
 
     # thank you: http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
-    colorblind_colors <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442",
-      "#0072B2", "#D55E00", "#CC79A7")
+    colorblind_colors <- c("#E69F00", "#56B4E9", "#009E73", "#CC79A7",
+      "#0072B2", "#D55E00", "#F0E442",)
 
     # if we don't have enough colorblind colors, add some random ones
     if (length(de_list) > length(colorblind_colors)) {
@@ -106,13 +106,13 @@ fdr_tpr_plot <- function(de_bench) {
 
   p <- ggplot(tmp, aes(estimate, tpr, group = method))
   p <- p + geom_line(aes(colour = method))
-  p <- p + xlab("eFDR")
+  p <- p + xlab("estimated FDR")
   p <- p + ylab("TPR")
   p <- p + xlim(0, 1)
   p <- p + ylim(0, 1)
   p <- p + scale_color_manual(values = de_bench$color_mapping)
 
-
+  p
 }
 
 calculate_fdr <- function(de_bench) {
@@ -153,7 +153,7 @@ fdr_efdr_plot <- function(de_bench) {
 
   p <- ggplot(pvals, aes(qval, tFDR))
   p <- p + geom_line(aes(color = method, linetype = method))
-  p <- p + xlab("eFDR")
+  p <- p + xlab("estimated FDR")
   p <- p + ylab("FDR")
   p <- p + scale_color_manual(values = de_bench$color_mapping)
 
