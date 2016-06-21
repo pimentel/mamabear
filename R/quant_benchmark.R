@@ -14,8 +14,7 @@ merge_results <- function(exp_list, exp_labels, oracle) {
   stopifnot( length(exp_list) == length(exp_labels) )
 
   exp_list <- lapply(seq_along(exp_list),
-    function(i)
-    {
+    function(i) {
       res <- exp_list[[i]] %>%
         dplyr::select(target_id, tpm, est_counts) %>%
         data.table::data.table()
@@ -64,8 +63,7 @@ compute_cor_oracle <- function(mres) {
   stopifnot( is(mres, "merged_res") )
 
   both_res <- lapply(list(mres$m_tpm, mres$m_est_counts),
-    function(res)
-    {
+    function(res) {
       res %>%
         group_by(method) %>%
         summarise(
@@ -92,8 +90,7 @@ filtered_no_summary <- function(mres, filter_exp) {
   }
 
   both_res <- lapply(list(mres$m_tpm, mres$m_est_counts),
-    function(res)
-    {
+    function(res) {
       if (do_filter) {
         res <- data.table(res) %>%
           inner_join(data.table(filtered_ids), by = c("target_id"))
@@ -128,59 +125,36 @@ filtered_summary <- function(mres, filter_exp, ignore_perfect = TRUE, normalize 
   }
 
   both_res <- lapply(list(mres$m_tpm, mres$m_est_counts),
-    function(res)
-    {
+    function(res) {
       if (do_filter) {
         message('filtering')
         res <- data.table(res) %>%
           inner_join(data.table(filtered_ids), by = c("target_id"))
       }
-      
-      metrics <- as.data.frame(res) %>% 
+
+      metrics <- as.data.frame(res) %>%
       #print(class(res))
       #metrics <- res %>%
-        group_by(method) %>% 
+        group_by(method) %>%
         mutate(diff = relative_difference(estimate, oracle, na_zeroes = FALSE,
           normalize_counts = TRUE))
-      
-      perfect <- metrics %>% 
-        group_by(target_id) %>% 
-        summarize(y = all(abs(diff) <= .Machine$double.eps^2)) %>% 
+
+      perfect <- metrics %>%
+        group_by(target_id) %>%
+        summarize(y = all(abs(diff) <= .Machine$double.eps ^ 2)) %>%
         filter(y)
       message('removing: ', nrow(perfect))
-      
+
       metrics <- anti_join(metrics, perfect, by = 'target_id')
-      
-      result <- as.data.frame(metrics) %>% 
-        group_by(method) %>% 
+
+      result <- as.data.frame(metrics) %>%
+        group_by(method) %>%
         summarize(
           mrd = median(abs(diff)),
           pearson = cor(estimate, oracle, method = "pearson"),
           spearman = cor(estimate, oracle, method = "spearman")
           )
-        
-      
-#        as.data.frame(res) %>%
-#         group_by(method) %>%
-#         summarise(
-#           pearson = cor(estimate, oracle, method = "pearson"),
-#           spearman = cor(estimate, oracle, method = "spearman"),
-#           med_rel_diff_no_zeroes = median(
-#             abs(
-#               ifelse(ignore_perfect,
-#                 remove_perfect(relative_difference(estimate, oracle, normalize_counts = normalize)),
-#                 relative_difference(estimate, oracle, normalize_counts = normalize))),
-#             na.rm = TRUE),
-#           med_rel_diff = median(
-#             abs(
-#               ifelse(ignore_perfect,
-#                 remove_perfect(relative_difference(estimate, oracle, FALSE, normalize_counts = normalize)),
-#                 relative_difference(estimate, oracle, FALSE, normalize_counts = normalize))),
-#             na.rm = TRUE),
-#           median_relative_difference = median(abs(relative_difference(estimate, oracle, na_zeroes = FALSE, normalize_counts = TRUE))),
-#           med_per_err = median(abs(percent_error(estimate, oracle)))
-#           )
-      
+
       result
     })
 
@@ -194,8 +168,7 @@ relative_difference <- function(x, y, na_zeroes = TRUE, normalize_counts = TRUE)
 
   non_zero <- which( x > 0 | y > 0 )
   both_zero <- setdiff(seq_along(x), non_zero)
-  #both_zero <- which( x <= .Machine$double.eps & y <= .Machine$double.eps)
-  #non_zero <- setdiff(seq_along(x), both_zero)
+
 
   if (!na_zeroes) {
     result[both_zero] <- 0.0
@@ -205,9 +178,8 @@ relative_difference <- function(x, y, na_zeroes = TRUE, normalize_counts = TRUE)
     x <- x / sum(x, na.rm = TRUE)
     y <- y / sum(y, na.rm = TRUE)
   }
-  
-  result[non_zero] <- 2 * ((x[non_zero] - y[non_zero]) /
-    abs(x[non_zero] + y[non_zero]))
+  result[non_zero] <- 2 * ( ( x[non_zero] - y[non_zero] ) /
+    abs(x[non_zero] + y[non_zero]) )
 
   result
 }
@@ -244,7 +216,8 @@ pairwise_cor <- function(mres, unit) {
     cor(method = "spearman") %>%
     reshape2::melt(varnames = c("method_a", "method_b")) %>%
     filter(method_a != method_b) %>%
-    mutate(ah = ifelse(as.character(method_a) < as.character(method_b), paste0(method_a, method_b), paste0(method_b, method_a))) %>%
+    mutate(ah = ifelse(as.character(method_a) < as.character(method_b),
+      paste0(method_a, method_b), paste0(method_b, method_a))) %>%
     distinct(ah) %>%
     select(-ah) %>%
     mutate(method_a = gsub(paste0(unit, "_"), "", method_a)) %>%
@@ -419,7 +392,7 @@ read_cufflinks <- function(fname, mean_frag_len) {
   data <- read.table(fname, header = TRUE, stringsAsFactors = FALSE)
 
   data <- data %>%
-    mutate(tpm = FPKM * 1e6/ sum(FPKM))
+    mutate(tpm = FPKM * 1e6 / sum(FPKM))
       #est_counts = tpm_to_alpha(tpm, length - mean_frag_len))
 
   data %>%
@@ -450,8 +423,7 @@ alpha_load <- function(dir_name, oracle_targs) {
 #' @export
 alpha_to_oracle_cor <- function(alpha, oracle_counts) {
   all_spearman <- lapply(1:ncol(alpha),
-    function(i)
-    {
+    function(i) {
       if (i %% 100 == 0) print(i)
       cor(alpha[,i], oracle_counts, method = "spearman")
     })

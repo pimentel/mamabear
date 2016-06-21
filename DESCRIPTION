@@ -1,12 +1,14 @@
 Package: mamabear
 Title: Mamabear: Ensures da bears are behaving
-Version: 0.0.1
+Version: 0.2
 Authors@R: person("Harold", "Pimentel", email = "haroldpimentel@gmail.com", role = c("aut", "cre"))
 Description: What the package does (one paragraph).
 Depends:
     R (>= 3.2.1),
+    data.table,
     dplyr,
     lazyeval,
+    reshape2,
     ggplot2
 License: GPL-3
 LazyData: true
