@@ -70,7 +70,9 @@ new_de_benchmark <- function(de_list, de_labels, oracle, de_colors = NULL,
       de_list)
   }
 
-  oracle <- dplyr::select(oracle, target_id, is_de, log_fc, matches('qval'))
+  # browser()
+  qval_column <- grep('qval', colnames(oracle))
+  oracle <- dplyr::select_(oracle, 'target_id', 'is_de', 'log_fc', qval_column)
   if ('qval' %in% colnames(oracle)) {
     oracle <- dplyr::rename(oracle, oracle_fdr = qval)
   }
@@ -239,8 +241,8 @@ average_bench_fdr <- function(list_bench,
 #' @export
 get_sensitivity_specificity <- function(de_bench,
   fdr_level = c(0.01, 0.05, 0.10)) {
-  p <- sum(de_bench$oracle$is_de)
-  n <- sum(!de_bench$oracle$is_de)
+  # p <- sum(de_bench$oracle$is_de)
+  # n <- sum(!de_bench$oracle$is_de)
 
   m_qval <- de_bench$m_qval
   m_qval <- dplyr::group_by(m_qval, method)
@@ -253,8 +255,8 @@ get_sensitivity_specificity <- function(de_bench,
         fp = sum(estimate <= f_level & !is_de),
         fn = sum(estimate > f_level & is_de),
         tn = sum(estimate > f_level & !is_de),
-        # p = sum(is_de),
-        # n = sum(!is_de),
+        p = sum(is_de),
+        n = sum(!is_de),
 
         sensitivity = tp / p,
         specificity = tn / n,
@@ -277,8 +279,12 @@ get_sensitivity_specificity <- function(de_bench,
 #' @return a data frame with sensitivity, specificity, precision, accuracy
 #' @export
 get_sensitivity_specificity_oracle <- function(de_bench,
-  fdr_level = c(0.01, 0.05, 0.10)) {
-  m_qval <- de_bench$m_qval
+  fdr_level = c(0.01, 0.05, 0.10), use_fdr = TRUE) {
+  if (use_fdr) {
+    m_qval <- de_bench$m_qval
+  } else {
+    m_qval <- de_bench$m_pval
+  }
   m_qval <- dplyr::mutate(m_qval, method = sub('qval_', '', method))
   m_qval <- dplyr::group_by(m_qval, method)
   m_qval <- dplyr::filter(m_qval, !is.na(estimate))
@@ -310,7 +316,7 @@ get_sensitivity_specificity_oracle <- function(de_bench,
 
 #' @export
 average_sensitivity_specificity <- function(de_bench_list,
-  fdr_level = c(0.01, 0.05, 0.10), use_oracle = FALSE) {
+  fdr_level = c(0.01, 0.05, 0.10), use_oracle = FALSE, use_fdr = TRUE) {
   stopifnot(is(de_bench_list, 'list'))
   stopifnot(all(sapply(de_bench_list, is, 'de_benchmark')))
 
@@ -318,7 +324,7 @@ average_sensitivity_specificity <- function(de_bench_list,
     function(i) {
       bench <- de_bench_list[[i]]
       res <- if (use_oracle) {
-        get_sensitivity_specificity_oracle(bench, fdr_level)
+        get_sensitivity_specificity_oracle(bench, fdr_level, use_fdr = use_fdr)
       } else {
         get_sensitivity_specificity(bench, fdr_level)
       }
@@ -624,7 +630,7 @@ fdr_efdr_power_plot <- function(
 
   # draw the fdr path
   p <- p + geom_path(aes(color = method),
-    size = 1.2, alpha = 0.8)
+    size = 1.5, alpha = 0.8)
 
   # draw the dashed line to the end
   max_nde <- dplyr::filter(mean_fdr, nde == max(nde))
@@ -680,6 +686,7 @@ fdr_efdr_power_plot <- function(
   if (!is.null(method_colors)) {
     p <- p + scale_color_manual(values = method_colors)
   }
+  p <- p + guides(colour = guide_legend(override.aes = list(size=5)))
 
   p
 }
